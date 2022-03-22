@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use http\Client\Curl\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Project;
 
 class ProjectController extends Controller
 {
@@ -27,7 +29,16 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'title' => 'required',
+            'description' => 'required'
+        ]);
+
+        $user = Auth::user();
+        $new_project = new Project($request->all());
+        $new_project['created_by_id'] = $user->getAuthIdentifier();
+        $new_project->collaborators()->attach($user);
+        return response($new_project, 201);
     }
 
     /**
@@ -38,7 +49,14 @@ class ProjectController extends Controller
      */
     public function show($id)
     {
-        //
+        $user = Auth::user();
+        $project = Project::findOrFail($id);
+        $collaborators_ids = $project->collaborators->pluck('id')->toArray();
+        if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
+            return Project::with(['tasks', 'collaborators', 'creator'])->find($id);
+        }
+        return response(['message' => 'You don\'t have permissions to see this project'],403);
+
     }
 
     /**
