@@ -68,7 +68,13 @@ class ProjectController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $project = Project::findOrFail($id);
+        $user_id = Auth::user()->getAuthIdentifier();
+        if($project->created_by_id != $user_id){
+            return response(['message' => 'You don\'t have permission to update this record'], 403);
+        }
+        $project->update($request->all());
+        return $project;
     }
 
     /**
