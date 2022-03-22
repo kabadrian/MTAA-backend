@@ -6,6 +6,8 @@ use http\Client\Curl\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Project;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class ProjectController extends Controller
 {
@@ -86,5 +88,30 @@ class ProjectController extends Controller
     public function destroy($id)
     {
         //
+    }
+
+    public function getAttachment($id){
+        $project = Project::findOrFail($id);
+        $file_path = Storage::path("$project->file_path");
+        return response()->file($file_path);
+    }
+
+    public function saveAttachment(Request $request, $id){
+        $project = Project::findOrFail($id);
+        if ($request->hasFile('file')) {
+            if($request->file('file')->isValid()){
+                $attachment = $request->file('file');
+                $content = File::get($attachment);
+                $fileName ='pdf-'. $id . '.' . $attachment->getClientOriginalExtension();
+                $project->file_path = $fileName;
+                $project->save();
+                Storage::put($fileName,$content);
+                return response(['message' => 'OK'], 200);
+            }
+        }
+        else{
+            return response(['message' => 'no file']);
+        }
+        return response(['message' => 'no file']);
     }
 }
