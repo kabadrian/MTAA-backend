@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProjectController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,5 +23,8 @@ Route::post('/login', [AuthController::class, 'login']);
 // routes that need api token authorization
 Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+    Route::resource('/projects', ProjectController::class);
+    Route::get('/projects/{id}/attachment', [ProjectController::class, 'getAttachment']);
+    Route::post('/projects/{id}/attachment', [ProjectController::class, 'saveAttachment']);
 });
 

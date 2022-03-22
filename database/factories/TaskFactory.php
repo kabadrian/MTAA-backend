@@ -21,7 +21,8 @@ class TaskFactory extends Factory
             'description' => $this->faker->paragraph,
             'due_date' => $this->faker->dateTimeBetween('+1 week', '+1 month'),
             'state_id' => $this->faker->numberBetween(1, 3),
-            'created_by_id' => $this->faker->numberBetween(1,4)
+//            'created_by_id' => $this->faker->numberBetween(1,4)
+            'created_by_id' => 1
         ];
     }
 }

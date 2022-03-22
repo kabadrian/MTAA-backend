@@ -20,7 +20,7 @@ class ProjectFactory extends Factory
             'title' => $this->faker->sentence,
             'description' => $this->faker->paragraph,
             'file_path' => $this->faker->filePath(),
-            'created_by_id' => 7
+//            'created_by_id' => 7
         ];
     }
 }
