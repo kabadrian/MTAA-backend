@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use http\Client\Curl\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Project;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use App\Models\User;
 
 class ProjectController extends Controller
 {
@@ -113,5 +113,24 @@ class ProjectController extends Controller
             return response(['message' => 'no file']);
         }
         return response(['message' => 'no file']);
+    }
+
+    public function addUsersToProject(Request $request, $id){
+        $project = Project::findOrFail($id);
+        $users_id_array = $request->get('user_id');
+
+        $integerIDs = array_map('intval', explode(',', $users_id_array));
+
+        foreach ($integerIDs as $user_id){
+            $user = User::find($user_id);
+            if(!$user){
+                return response(['message'=>"User with id $user_id doesn\'t exist"],400);
+            }
+            if($project->collaborators->contains($user)){
+                return response(['message'=>"User with id $user_id is already on project"],400);
+            }
+            $project->collaborators()->attach($user);
+        }
+        return (Project::with(['tasks', 'creator', 'collaborators'])->find($id));
     }
 }
