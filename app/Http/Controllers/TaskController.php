@@ -19,7 +19,7 @@ class TaskController extends Controller
     public function index($id)
     {
         $project = Project::findOrFail($id);
-        $tasks = $project->task();
+        $tasks = $project->tasks;
         return $tasks;
     }
 
@@ -34,7 +34,7 @@ class TaskController extends Controller
         $request->validate([
             'title' => 'required',
             'description' => 'required',
-            'state' => 'required',
+            'state_id' => 'required',
         ]);
         $new_task = new Task($request->all());
         $new_task['created_by_id'] = Auth::user()->getAuthIdentifier();
@@ -94,6 +94,4 @@ class TaskController extends Controller
         Task::destroy($id);
         return response(['message' => 'deleted'], 200);
     }
-
-
 }
