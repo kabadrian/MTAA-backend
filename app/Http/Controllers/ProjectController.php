@@ -35,12 +35,18 @@ class ProjectController extends Controller
             'title' => 'required',
             'description' => 'required'
         ]);
-
         $user = Auth::user();
         $new_project = new Project($request->all());
         $new_project['created_by_id'] = $user->getAuthIdentifier();
+        $new_project->save();
         $new_project->collaborators()->attach($user);
-        return response($new_project, 201);
+        if($request->has('project_users_id')) {
+            $user_ids = $request->json()->all()['project_users_id'];
+            $users = User::whereIn('id', $user_ids)->get();
+            $new_project->collaborators()->attach($users);
+        }
+        $created_project = Project::with('collaborators', 'tasks', 'creator')->find($new_project['id']);
+        return response($created_project, 201);
     }
 
     /**
@@ -119,9 +125,7 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $users_id_array = $request->get('user_id');
 
-        $integerIDs = array_map('intval', explode(',', $users_id_array));
-
-        foreach ($integerIDs as $user_id){
+        foreach ($users_id_array as $user_id){
             $user = User::find($user_id);
             if(!$user){
                 return response(['message'=>"User with id $user_id doesn\'t exist"],400);
