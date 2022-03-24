@@ -37,5 +37,6 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::resource('/projects', ProjectController::class);
     Route::get('/projects/{id}/attachment', [ProjectController::class, 'getAttachment']);
     Route::post('/projects/{id}/attachment', [ProjectController::class, 'saveAttachment']);
+    Route::post('/projects/{id}/add-user', [ProjectController::class, 'addUsersToProject']);
 });
 
