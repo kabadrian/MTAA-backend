@@ -19,7 +19,7 @@ class TaskController extends Controller
     public function index($id)
     {
         $project = Project::findOrFail($id);
-        $tasks = $project->tasks;
+        $tasks = $project->tasks->toQuery()->with('state')->get();
         return $tasks;
     }
 
@@ -36,6 +36,12 @@ class TaskController extends Controller
             'description' => 'required',
             'state_id' => 'required',
         ]);
+        if($request->has('asignee_id')){
+            $user = User::find($request['asignee_id']);
+            if(!isset($user)) {
+                return response(['message' => 'Assigned user doesn\'t exist'], 400);
+            }
+        }
         $new_task = new Task($request->all());
         $new_task['created_by_id'] = Auth::user()->getAuthIdentifier();
         $new_task['project_id'] = $id;
