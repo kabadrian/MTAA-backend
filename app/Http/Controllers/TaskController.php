@@ -74,14 +74,14 @@ class TaskController extends Controller
             'title' => 'required',
             'description' => 'required',
         ]);
-        $task = Task::findOrFail($id);
+        $task = Task::with('state')->findOrFail($id);
         $user_id = Auth::user()->getAuthIdentifier();
         if($task->created_by_id != $user_id){
             return response(['message' => 'You don\'t have permission to update this task'], 403);
         }
         $task->update($request->all());
         $task->save();
-        return response($task, 201);
+        return response($task, 200);
     }
 
     /**
