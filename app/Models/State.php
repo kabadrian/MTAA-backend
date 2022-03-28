@@ -10,6 +10,6 @@ class State extends Model
     use HasFactory;
 
     public function tasks(){
-        $this->hasMany(Task::class);
+        return $this->hasMany(Task::class);
     }
 }
