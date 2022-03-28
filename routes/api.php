@@ -24,9 +24,6 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // routes that need api token authorization
 Route::group(['middleware' => ['auth:sanctum']], function() {
-
-
-
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::get('/projects/{project_id}/tasks', [TaskController::class, 'index']);
     Route::get('/tasks/{task_id}', [TaskController::class, 'show']);

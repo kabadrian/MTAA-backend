@@ -97,44 +97,58 @@ class ProjectController extends Controller
     }
 
     public function getAttachment($id){
+        $user = Auth::user();
         $project = Project::findOrFail($id);
-        $file_path = Storage::path("$project->file_path");
-        return response()->file($file_path);
+        $collaborators_ids = $project->collaborators->pluck('id')->toArray();
+
+        if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
+            $file_path = Storage::path("$project->file_path");
+            return response()->file($file_path);
+        }
+        return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
 
     public function saveAttachment(Request $request, $id){
+        $user = Auth::user();
         $project = Project::findOrFail($id);
-        if ($request->hasFile('file')) {
-            if($request->file('file')->isValid()){
-                $attachment = $request->file('file');
-                $content = File::get($attachment);
-                $fileName ='pdf-'. $id . '.' . $attachment->getClientOriginalExtension();
-                $project->file_path = $fileName;
-                $project->save();
-                Storage::put($fileName,$content);
-                return response(['message' => 'OK'], 200);
+        if($user->getAuthIdentifier() == $project['creator_id']) {
+            if ($request->hasFile('file')) {
+                if ($request->file('file')->isValid()) {
+                    $attachment = $request->file('file');
+                    $content = File::get($attachment);
+                    $fileName = 'pdf-' . $id . '.' . $attachment->getClientOriginalExtension();
+                    $project->file_path = $fileName;
+                    $project->save();
+                    Storage::put($fileName, $content);
+                    return response(['message' => 'OK'], 200);
+                }
+            } else {
+                return response(['message' => 'no file']);
             }
-        }
-        else{
             return response(['message' => 'no file']);
         }
-        return response(['message' => 'no file']);
+        return response(['message' => 'Only project creator can upload documentation for project'],403);
     }
 
-    public function addUsersToProject(Request $request, $id){
+    public function addUsersToProject(Request $request, $id)
+    {
+        $user = Auth::user();
         $project = Project::findOrFail($id);
-        $users_id_array = $request->get('user_id');
+        if ($user->getAuthIdentifier() == $project['creator_id']) {
 
-        foreach ($users_id_array as $user_id){
-            $user = User::find($user_id);
-            if(!$user){
-                return response(['message'=>"User with id $user_id doesn\'t exist"],400);
+            $users_id_array = $request->get('user_id');
+            foreach ($users_id_array as $user_id) {
+                $user = User::find($user_id);
+                if (!$user) {
+                    return response(['message' => "User with id $user_id doesn\'t exist"], 400);
+                }
+                if ($project->collaborators->contains($user)) {
+                    return response(['message' => "User with id $user_id is already on project"], 400);
+                }
+                $project->collaborators()->attach($user);
             }
-            if($project->collaborators->contains($user)){
-                return response(['message'=>"User with id $user_id is already on project"],400);
-            }
-            $project->collaborators()->attach($user);
+            return (Project::with(['tasks', 'creator', 'collaborators'])->find($id));
         }
-        return (Project::with(['tasks', 'creator', 'collaborators'])->find($id));
+        return response(['message' => 'Only project creator can add users to project'],403);
     }
 }
