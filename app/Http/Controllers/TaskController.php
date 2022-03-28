@@ -18,9 +18,14 @@ class TaskController extends Controller
      */
     public function index($id)
     {
+        $user = Auth::user();
         $project = Project::findOrFail($id);
-        $tasks = $project->tasks->toQuery()->with('state')->get();
-        return $tasks;
+        $collaborators_ids = $project->collaborators->pluck('id')->toArray();
+        if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
+            $tasks = $project->tasks->toQuery()->with('state')->get();
+            return $tasks;
+        }
+        return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
 
     /**
@@ -36,17 +41,23 @@ class TaskController extends Controller
             'description' => 'required',
             'state_id' => 'required',
         ]);
-        if($request->has('asignee_id')){
-            $user = User::find($request['asignee_id']);
-            if(!isset($user)) {
-                return response(['message' => 'Assigned user doesn\'t exist'], 400);
+        $user = Auth::user();
+        $project = Project::findOrFail($id);
+        $collaborators_ids = $project->collaborators->pluck('id')->toArray();
+        if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
+            if($request->has('asignee_id')){
+                $user = User::find($request['asignee_id']);
+                if(!isset($user)) {
+                    return response(['message' => 'Assigned user doesn\'t exist'], 400);
+                }
             }
+            $new_task = new Task($request->all());
+            $new_task['created_by_id'] = Auth::user()->getAuthIdentifier();
+            $new_task['project_id'] = $id;
+            $new_task->save();
+            return response($new_task, 201);
         }
-        $new_task = new Task($request->all());
-        $new_task['created_by_id'] = Auth::user()->getAuthIdentifier();
-        $new_task['project_id'] = $id;
-        $new_task->save();
-        return response($new_task, 201);
+        return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
 
     /**
@@ -57,8 +68,15 @@ class TaskController extends Controller
      */
     public function show($id)
     {
+        $user = Auth::user();
         $task = Task::findOrFail($id);
-        return $task;
+        $project = Project::findOrFail($task->project_id);
+        $collaborators_ids = $project->collaborators->pluck('id')->toArray();
+        if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
+            $task = Task::findOrFail($id);
+            return $task;
+        }
+        return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
 
     /**
@@ -76,12 +94,18 @@ class TaskController extends Controller
         ]);
         $task = Task::with('state')->findOrFail($id);
         $user_id = Auth::user()->getAuthIdentifier();
-        if($task->created_by_id != $user_id){
-            return response(['message' => 'You don\'t have permission to update this task'], 403);
+        $user = Auth::user();
+        $project = Project::findOrFail($task->project_id);
+        $collaborators_ids = $project->collaborators->pluck('id')->toArray();
+        if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
+            if ($task->created_by_id != $user_id) {
+                return response(['message' => 'You don\'t have permission to update this task'], 403);
+            }
+            $task->update($request->all());
+            $task->save();
+            return response($task, 200);
         }
-        $task->update($request->all());
-        $task->save();
-        return response($task, 200);
+        return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
 
     /**
@@ -94,10 +118,16 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($id);
         $user_id = Auth::user()->getAuthIdentifier();
-        if($task->created_by_id != $user_id){
-            return response(['message' => 'You don\'t have permission to delete this record'], 403);
+        $user = Auth::user();
+        $project = Project::findOrFail($task->project_id);
+        $collaborators_ids = $project->collaborators->pluck('id')->toArray();
+        if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
+            if ($task->created_by_id != $user_id) {
+                return response(['message' => 'You don\'t have permission to delete this record'], 403);
+            }
+            Task::destroy($id);
+            return response(['message' => 'deleted'], 200);
         }
-        Task::destroy($id);
-        return response(['message' => 'deleted'], 200);
+        return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
 }
