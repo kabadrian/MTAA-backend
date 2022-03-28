@@ -8,6 +8,8 @@ use App\Models\Project;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
+use App\Models\State;
+use Illuminate\Support\Facades\DB;
 
 class ProjectController extends Controller
 {
@@ -18,9 +20,27 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
 
-        return $user->projects()->with(['tasks', 'creator', 'collaborators'])->paginate(10);
+        $user = Auth::user();
+        $project_counts = [];
+        $query = $user->projects();
+        $query->when(request('ownership') == 'mine', function($q) use($user){
+            return $q->where('created_by_id', $user->getAuthIdentifier());
+        });
+        $query->when(request('ownership') == 'others', function($q) use($user){
+            return $q->where('created_by_id', '!=', $user->getAuthIdentifier());
+        });
+        $projects = $query->withCount(['collaborators', 'tasks'])->paginate(5);
+
+        foreach ($projects as $project){
+            foreach (State::all() as $state){
+                $project_counts[$project->id][$state->name] = DB::table('projects')
+                    ->where('projects.id', $project->id)
+                    ->join('tasks', 'projects.id', '=', 'tasks.project_id')
+                    ->where('tasks.state_id', '=', $state->id)->count();
+            }
+        }
+        return response(['projects'=>$projects, 'project_counts' => $project_counts], 200);
     }
 
     /**
@@ -111,7 +131,7 @@ class ProjectController extends Controller
     public function saveAttachment(Request $request, $id){
         $user = Auth::user();
         $project = Project::findOrFail($id);
-        if($user->getAuthIdentifier() == $project['creator_id']) {
+        if($user->getAuthIdentifier() == $project['created_by_id']) {
             if ($request->hasFile('file')) {
                 if ($request->file('file')->isValid()) {
                     $attachment = $request->file('file');
@@ -134,7 +154,7 @@ class ProjectController extends Controller
     {
         $user = Auth::user();
         $project = Project::findOrFail($id);
-        if ($user->getAuthIdentifier() == $project['creator_id']) {
+        if ($user->getAuthIdentifier() == $project['created_by_id']) {
 
             $users_id_array = $request->get('user_id');
             foreach ($users_id_array as $user_id) {
