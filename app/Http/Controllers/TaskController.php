@@ -73,7 +73,7 @@ class TaskController extends Controller
         $project = Project::findOrFail($task->project_id);
         $collaborators_ids = $project->collaborators->pluck('id')->toArray();
         if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
-            $task = Task::findOrFail($id);
+            $task = Task::with('state')->findOrFail($id);
             return $task;
         }
         return response(['message' => 'You don\'t have permissions to see this project'],403);
