@@ -20,6 +20,20 @@ class TaskController extends Controller
     {
         $user = Auth::user();
         $project = Project::findOrFail($id);
+
+        $query = $project->tasks();
+        $query->when(request('assigned_to') == 'mine', function($q) use($user){
+            return $q->where('assignee_id', $user->getAuthIdentifier());
+        });
+        $query->when(request('assigned_to') == 'others', function($q) use($user){
+            return $q->where('assignee_id', '!=', $user->getAuthIdentifier());
+        });
+        $query->when(request('assigned_to') == 'unassigned', function($q) use($user){
+            return $q->where('assignee_id', '!=', $user->getAuthIdentifier());
+        });
+
+        $tasks = $query->paginate(5);
+
         $collaborators_ids = $project->collaborators->pluck('id')->toArray();
         if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
             $tasks = $project->tasks->toQuery()->with('state')->get();
