@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\State;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -195,5 +196,10 @@ class TaskController extends Controller
         $task->update($request->only('state_id'));
         $task->save();
         return response($task, 200);
+    }
+
+    public function getAllStates()
+    {
+        return State::all();
     }
 }
