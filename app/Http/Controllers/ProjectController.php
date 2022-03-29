@@ -55,11 +55,38 @@ class ProjectController extends Controller
             'title' => 'required',
             'description' => 'required'
         ]);
+        $array_of_users = [];
+        $users_email_array = $request->get('user_emails');
+        foreach ($users_email_array as $user_email) {
+            $user_id = User::where('email', $user_email)->first();
+            if($user_id){
+                $user_id = $user_id->id;
+                $user = User::find($user_id);
+                if(!isset($user)) {
+                    return response(['message' => 'Assigned user doesn\'t exist'], 422);
+                }
+            }
+            else{
+                return response(['message' => 'Email of assigned user doesn\'t exist'], 422);
+            }
+            if (in_array($user_id, $array_of_users)) {
+                return response(['message' => "Duplicate emails added to projects"], 422);
+            }
+            $array_of_users[] = $user->id;
+        }
+
         $user = Auth::user();
+
+        if (in_array($user->getAuthIdentifier(), $array_of_users)) {
+            return response(['message' => "Duplicate emails added to projects"], 422);
+        }
+
         $new_project = new Project($request->all());
         $new_project['created_by_id'] = $user->getAuthIdentifier();
         $new_project->save();
+        $new_project->collaborators()->attach($array_of_users);
         $new_project->collaborators()->attach($user);
+
         if($request->has('project_users_id')) {
             $user_ids = $request->json()->all()['project_users_id'];
             $users = User::whereIn('id', $user_ids)->get();
@@ -122,8 +149,18 @@ class ProjectController extends Controller
         $collaborators_ids = $project->collaborators->pluck('id')->toArray();
 
         if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
-            $file_path = Storage::path("$project->file_path");
-            return response()->file($file_path);
+            try{
+                $file_path = Storage::path("$project->file_path");
+                if (!$file_path){
+                    return response(['message' => 'File not found'],404);
+                }
+                return response()->file($file_path);
+            }
+           catch(\Exception $e){
+                return response(['message' => 'File not found'],404);
+           }
+
+
         }
         return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
@@ -143,9 +180,9 @@ class ProjectController extends Controller
                     return response(['message' => 'OK'], 200);
                 }
             } else {
-                return response(['message' => 'no file']);
+                return response(['message' => 'no file'], 404);
             }
-            return response(['message' => 'no file']);
+            return response(['message' => 'no file'], 404);
         }
         return response(['message' => 'Only project creator can upload documentation for project'],403);
     }
@@ -155,18 +192,26 @@ class ProjectController extends Controller
         $user = Auth::user();
         $project = Project::findOrFail($id);
         if ($user->getAuthIdentifier() == $project['created_by_id']) {
-
-            $users_id_array = $request->get('user_id');
-            foreach ($users_id_array as $user_id) {
-                $user = User::find($user_id);
-                if (!$user) {
-                    return response(['message' => "User with id $user_id doesn\'t exist"], 400);
+            $array_of_users = [];
+            $users_email_array = $request->get('user_emails');
+            foreach ($users_email_array as $user_email) {
+                $user_id = User::where('email', $user_email)->first();
+                if($user_id){
+                    $user_id = $user_id->id;
+                    $user = User::find($user_id);
+                    if(!isset($user)) {
+                        return response(['message' => 'Assigned user doesn\'t exist'], 422);
+                    }
                 }
-                if ($project->collaborators->contains($user)) {
-                    return response(['message' => "User with id $user_id is already on project"], 400);
+                else{
+                    return response(['message' => 'Email of assigned user doesn\'t exist'], 422);
                 }
-                $project->collaborators()->attach($user);
+                if ($project->collaborators->contains($user_id)) {
+                    return response(['message' => "Email already exists - $user->email"], 422);
+                }
+                $array_of_users[] = $user->id;
             }
+            $project->collaborators()->attach($array_of_users);
             return (Project::with(['tasks', 'creator', 'collaborators'])->find($id));
         }
         return response(['message' => 'Only project creator can add users to project'],403);

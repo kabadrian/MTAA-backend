@@ -56,18 +56,30 @@ class TaskController extends Controller
             'state_id' => 'required',
         ]);
         $user = Auth::user();
+        $assignee_id = null;
         $project = Project::findOrFail($id);
         $collaborators_ids = $project->collaborators->pluck('id')->toArray();
         if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
-            if($request->has('asignee_id')){
-                $user = User::find($request['asignee_id']);
-                if(!isset($user)) {
-                    return response(['message' => 'Assigned user doesn\'t exist'], 400);
+            if ($request->has('assignee_email')){
+                $assignee_id = User::where('email', $request->get('assignee_email'))->first();
+                if($assignee_id){
+                    $assignee_id = $assignee_id->id;
+                    $user = User::find($assignee_id);
+                    if(!isset($user)) {
+                        return response(['message' => 'Assigned user doesn\'t exist'], 422);
+                    }
                 }
+                else{
+                    return response(['message' => 'Email of assigned user doesn\'t exist'], 422);
+                }
+
             }
             $new_task = new Task($request->all());
             $new_task['created_by_id'] = Auth::user()->getAuthIdentifier();
             $new_task['project_id'] = $id;
+            if ($assignee_id){
+                $new_task['asignee_id'] = $assignee_id;
+            }
             $new_task->save();
             return response($new_task, 201);
         }
@@ -106,6 +118,7 @@ class TaskController extends Controller
             'title' => 'required',
             'description' => 'required',
         ]);
+
         $task = Task::with('state')->findOrFail($id);
         $user_id = Auth::user()->getAuthIdentifier();
         $user = Auth::user();
@@ -114,6 +127,22 @@ class TaskController extends Controller
         if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
             if ($task->created_by_id != $user_id) {
                 return response(['message' => 'You don\'t have permission to update this task'], 403);
+            }
+            if ($request->get('assignee_email')){
+                $assignee_id = User::where('email', $request->get('assignee_email'))->first();
+                if($assignee_id){
+                    $assignee_id = $assignee_id->id;
+                    $user = User::find($assignee_id);
+                    if(!isset($user)) {
+                        return response(['message' => 'Assigned user doesn\'t exist'], 422);
+                    }
+                    else{
+                        $task['asignee_id'] = $assignee_id;
+                    }
+                }
+                else{
+                    return response(['message' => 'Email of assigned user doesn\'t exist'], 422);
+                }
             }
             $task->update($request->all());
             $task->save();
@@ -150,6 +179,11 @@ class TaskController extends Controller
         $request->validate([
             'state_id' => 'required',
         ]);
+        $state = State::find($request->get('state_id'));
+        if ($state == null){
+            return response(['message' => 'State with given id doesn\'t exist'], 422);
+        }
+
         $task = Task::with('state')->findOrFail($id);
         $user_id = Auth::user()->getAuthIdentifier();
         $user = Auth::user();
