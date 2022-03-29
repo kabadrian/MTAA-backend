@@ -30,6 +30,7 @@ Route::group(['middleware' => ['auth:sanctum']], function() {
     Route::post('/projects/{project_id}/tasks', [TaskController::class, 'store']);
     Route::put('/tasks/{task_id}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task_id}', [TaskController::class, 'destroy']);
+    Route::delete('/tasks/{task_id}/changeState', [TaskController::class, 'changeState']);
 
     Route::resource('/projects', ProjectController::class);
     Route::get('/projects/{id}/attachment', [ProjectController::class, 'getAttachment']);

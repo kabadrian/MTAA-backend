@@ -29,7 +29,7 @@ class TaskController extends Controller
             return $q->where('assignee_id', '!=', $user->getAuthIdentifier());
         });
         $query->when(request('assigned_to') == 'unassigned', function($q) use($user){
-            return $q->where('assignee_id', '!=', $user->getAuthIdentifier());
+            return $q->where('assignee_id', '==', null);
         });
 
         $tasks = $query->paginate(5);
@@ -143,5 +143,23 @@ class TaskController extends Controller
             return response(['message' => 'deleted'], 200);
         }
         return response(['message' => 'You don\'t have permissions to see this project'],403);
+    }
+
+    public function changeState(Request $request, $id)
+    {
+        $request->validate([
+            'state_id' => 'required',
+        ]);
+        $task = Task::with('state')->findOrFail($id);
+        $user_id = Auth::user()->getAuthIdentifier();
+        $user = Auth::user();
+        $project = Project::findOrFail($task->project_id);
+        $assignee_id = $task->asignee_id;
+        if($user_id != $assignee_id) {
+                return response(['message' => 'You don\'t have permission to update this task'], 403);
+            }
+        $task->update($request->only('state_id'));
+        $task->save();
+        return response($task, 200);
     }
 }
