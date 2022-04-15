@@ -181,7 +181,7 @@ class ProjectController extends Controller
                 $path = storage_path(). '/app/public/images/' . $imageName;
                 File::put($path, base64_decode($image));
 
-                $project->file_path = '/public/images/'.$imageName;
+                $project->file_path = $imageName;
                 $project->save();
                 return response(['message' => 'OK'], 200);
             }
