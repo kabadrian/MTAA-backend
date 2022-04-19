@@ -32,8 +32,8 @@ class DatabaseSeeder extends Seeder
             'color' => '#028A0F'
         ]);
 
-//        $user = User::factory()->create();
-//        $user->createToken('apiToken')->plainTextToken;
+  //      $user = User::factory()->create();
+   //     $user->createToken('apiToken')->plainTextToken;
         $user = User::find(1);
 
 //      create 6 projects for user, each containing 3 tasks

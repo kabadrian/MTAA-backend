@@ -17,12 +17,12 @@ class TaskController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index($id)
+    public function index(Request $request, $id)
     {
         $user = Auth::user();
         $project = Project::findOrFail($id);
-
-        $query = $project->tasks();
+        //return request('assigned_to');
+        $query = $project->tasks->toQuery()->with(['state', 'asignee'])->orderBy('state_id')->get();
         $query->when(request('assigned_to') == 'mine', function($q) use($user){
             return $q->where('assignee_id', $user->getAuthIdentifier());
         });
@@ -33,12 +33,12 @@ class TaskController extends Controller
             return $q->where('assignee_id', '==', null);
         });
 
-        $tasks = $query->paginate(5);
+        //$tasks = $query->paginate(5);
 
         $collaborators_ids = $project->collaborators->pluck('id')->toArray();
         if(in_array($user->getAuthIdentifier(), $collaborators_ids)) {
-            $tasks = $project->tasks->toQuery()->with('state')->get();
-            return $tasks;
+            $tasks = $project->tasks->toQuery()->with(['state', 'asignee'])->get();
+            return $query;
         }
         return response(['message' => 'You don\'t have permissions to see this project'],403);
     }
@@ -69,9 +69,6 @@ class TaskController extends Controller
                     if(!isset($user)) {
                         return response(['message' => 'Assigned user doesn\'t exist'], 422);
                     }
-                }
-                else{
-                    return response(['message' => 'Email of assigned user doesn\'t exist'], 422);
                 }
 
             }
