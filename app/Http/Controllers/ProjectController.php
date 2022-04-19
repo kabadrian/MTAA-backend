@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\State;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ProjectController extends Controller
 {
@@ -30,7 +31,7 @@ class ProjectController extends Controller
         $query->when(request('ownership') == 'others', function($q) use($user){
             return $q->where('created_by_id', '!=', $user->getAuthIdentifier());
         });
-        $projects = $query->withCount(['collaborators', 'tasks'])->paginate(5);
+        $projects = $query->withCount(['collaborators', 'tasks'])->get();
 
         foreach ($projects as $project){
             foreach (State::all() as $state){
@@ -167,20 +168,22 @@ class ProjectController extends Controller
 
     public function saveAttachment(Request $request, $id){
         $user = Auth::user();
+
         $project = Project::findOrFail($id);
         if($user->getAuthIdentifier() == $project['created_by_id']) {
-            if ($request->hasFile('file')) {
-                if ($request->file('file')->isValid()) {
-                    $attachment = $request->file('file');
-                    $content = File::get($attachment);
-                    $fileName = 'pdf-' . $id . '.' . $attachment->getClientOriginalExtension();
-                    $project->file_path = $fileName;
-                    $project->save();
-                    Storage::put($fileName, $content);
-                    return response(['message' => 'OK'], 200);
-                }
-            } else {
-                return response(['message' => 'no file'], 404);
+            if ($request->has('file')) {
+                $image = $request->file;  // your base64 encoded
+                $extension = $request->get('extension');
+
+//              solution for decoding image is used from https://laracasts.com/discuss/channels/laravel/create-image-from-base64-string-laravel
+                $image = str_replace("data:image/$extension;base64,", '', $image);
+                $imageName = Str::random(10).'.'.$extension;
+                $path = storage_path(). '/app/public/images/' . $imageName;
+                File::put($path, base64_decode($image));
+
+                $project->file_path = $imageName;
+                $project->save();
+                return response(['message' => 'OK'], 200);
             }
             return response(['message' => 'no file'], 404);
         }
