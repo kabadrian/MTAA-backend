@@ -31,7 +31,7 @@ class ProjectController extends Controller
         $query->when(request('ownership') == 'others', function($q) use($user){
             return $q->where('created_by_id', '!=', $user->getAuthIdentifier());
         });
-        $projects = $query->withCount(['collaborators', 'tasks'])->paginate(10);
+        $projects = $query->withCount(['collaborators', 'tasks'])->get();
 
         foreach ($projects as $project){
             foreach (State::all() as $state){
